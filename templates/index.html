@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marca de agua en lote</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body data-desktop="{{ '1' if desktop else '0' }}">
+
+<header class="bar">
+  <div class="brand">
+    <span class="mark">WM</span>
+    <div>
+      <h1>Marca de agua en lote</h1>
+      <p class="sub" id="counter">Sin imágenes</p>
+    </div>
+  </div>
+  <div class="bar-actions">
+    <button class="btn" id="btnFolder">Elegir carpeta</button>
+    <button class="btn" id="btnFiles">Elegir archivos</button>
+    <button class="btn" id="btnTyped" title="Escribir la ruta a mano">Pegar ruta</button>
+    <input type="file" id="filePicker" multiple accept="image/*,video/*" hidden>
+    <span class="divider"></span>
+    <label class="switch" id="gpuWrap" hidden>
+      <input type="checkbox" id="gpu" checked>
+      <span class="track"><span class="knob"></span></span>
+      <span class="switch-label" id="gpuLabel">GPU</span>
+    </label>
+    <label class="switch" id="packWrap">
+      <input type="checkbox" id="pack" checked>
+      <span class="track"><span class="knob"></span></span>
+      <span class="switch-label" id="packLabel">ZIP</span>
+    </label>
+    <span class="divider"></span>
+    <button class="btn primary" id="btnProcess">Procesar y crear ZIP</button>
+    <button class="link danger" id="btnCancel" hidden>Cancelar</button>
+    <a class="btn" id="btnDownload" hidden download>Descargar ZIP</a>
+    <button class="btn" id="btnSaveFiles" hidden>Guardar archivos</button>
+    <button class="btn icon" id="btnTheme" title="Cambiar tema" aria-label="Cambiar tema">◐</button>
+  </div>
+</header>
+<div class="topbar-progress" id="progress" hidden>
+  <div class="track"><div class="fill" id="progFill"></div></div>
+  <span class="readout dim" id="progText">0 / 0</span>
+</div>
+
+<div class="banner" id="ffmpegWarn" hidden>
+  <b>FFmpeg no está instalado.</b> Puedes seguir usando la app con imágenes;
+  para añadir marca de agua a vídeos hace falta instalarlo.
+  <button class="link" id="btnFfmpegHelp">Cómo instalarlo</button>
+</div>
+
+<main class="grid">
+
+  <!-- ---------------------------------------------------------- lista -->
+  <section class="panel list-panel">
+    <div class="panel-head">
+      <h2>Archivos</h2>
+      <button class="link danger" id="btnClear">Quitar todas</button>
+    </div>
+    <ul class="filelist" id="filelist"></ul>
+    <div class="empty" id="listEmpty">
+      <p>Arrastra imágenes o vídeos aquí</p>
+      <p class="hint">o usa <b>Elegir carpeta</b> arriba</p>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------ vista previa -->
+  <section class="panel view-panel">
+    <div class="panel-head">
+      <h2>Vista previa</h2>
+      <div class="viewer-nav">
+        <button class="btn small" id="btnZoomOut" title="Alejar">−</button>
+        <button class="btn small zoomval" id="btnZoomFit" title="Ajustar a la ventana">Ajustar</button>
+        <button class="btn small" id="btnZoomIn" title="Acercar">+</button>
+        <span class="divider"></span>
+        <button class="btn small" id="btnPrev" title="Anterior">‹</button>
+        <span class="readout" id="viewerPos">0 / 0</span>
+        <button class="btn small" id="btnNext" title="Siguiente">›</button>
+      </div>
+    </div>
+    <div class="stage" id="stage">
+      <div class="stage-empty" id="stageEmpty">La vista previa aparece al elegir un archivo</div>
+      <div class="canvas" id="canvas">
+        <img id="preview" alt="Vista previa con la marca de agua aplicada" hidden>
+      </div>
+      <div class="spinner" id="spinner" hidden></div>
+    </div>
+    <div class="stage-foot">
+      <span class="readout" id="metaName">—</span>
+      <span class="readout dim" id="metaSize"></span>
+    </div>
+  </section>
+
+  <!-- -------------------------------------------------------- controles -->
+  <section class="panel ctrl-panel">
+
+    <div class="group">
+      <label class="lbl" for="preset">Preset</label>
+      <div class="row">
+        <select id="preset"><option value="">— sin preset —</option></select>
+      </div>
+      <div class="row3">
+        <button class="btn small grow" id="btnPresetSave">Guardar</button>
+        <button class="btn small grow" id="btnPresetLoad">Cargar</button>
+        <button class="btn small grow" id="btnPresetDel">Borrar</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="lbl">Tipo de marca</div>
+      <div class="row3">
+        <label class="seg"><input type="radio" name="mark_mode" value="text" checked><span>Texto</span></label>
+        <label class="seg"><input type="radio" name="mark_mode" value="image"><span>Firma</span></label>
+      </div>
+    </div>
+
+    <div class="group" id="grpSign" hidden>
+      <label class="lbl">Imagen de firma</label>
+      <div class="asset" id="signBox">
+        <img id="signThumb" alt="" hidden>
+        <span class="asset-name" id="signName">Ninguna seleccionada</span>
+      </div>
+      <div class="row3">
+        <button class="btn small grow" id="btnSignPick">Elegir imagen</button>
+        <button class="btn small" id="btnSignClear" title="Quitar">×</button>
+      </div>
+      <p class="note">Se recomienda un PNG con fondo transparente.</p>
+    </div>
+
+    <div class="group" id="grpText">
+      <label class="lbl" for="text">Texto</label>
+      <textarea id="text" rows="2" placeholder="© Tu nombre 2026">© Mi estudio</textarea>
+    </div>
+
+    <div class="group">
+      <label class="lbl" for="font">Fuente</label>
+      <div class="row">
+        <select id="font"></select>
+        <button class="btn small" id="btnAddFont" title="Cargar un archivo .ttf">+</button>
+      </div>
+      <div class="row3">
+        <label class="seg"><input type="radio" name="align" value="left" checked><span>Izq.</span></label>
+        <label class="seg"><input type="radio" name="align" value="center"><span>Centro</span></label>
+        <label class="seg"><input type="radio" name="align" value="right"><span>Der.</span></label>
+      </div>
+    </div>
+
+    <details class="group fold" id="grpIcon">
+      <summary>
+        <label class="check" onclick="event.stopPropagation()">
+          <input type="checkbox" id="icon_on"> Icono junto al texto
+        </label>
+      </summary>
+      <div class="asset" id="iconBox">
+        <img id="iconThumb" alt="" hidden>
+        <span class="asset-name" id="iconName">Ninguno seleccionado</span>
+      </div>
+      <div class="row3">
+        <button class="btn small grow" id="btnIconPick">Elegir imagen</button>
+        <button class="btn small" id="btnIconClear" title="Quitar">×</button>
+      </div>
+      <div class="row3">
+        <label class="seg"><input type="radio" name="icon_pos" value="left" checked><span>Izquierda</span></label>
+        <label class="seg"><input type="radio" name="icon_pos" value="right"><span>Derecha</span></label>
+      </div>
+      <div class="slider" data-suffix="%">
+        <label for="icon_gap">Separación <output>25</output></label>
+        <input type="range" id="icon_gap" min="0" max="120" step="1" value="25">
+      </div>
+      <p class="note">El icono se escala solo a la altura exacta del texto.</p>
+    </details>
+
+    <div class="group">
+      <div class="lbl">Posición</div>
+      <div class="pad" id="pad">
+        <button data-pos="tl"></button><button data-pos="tc"></button><button data-pos="tr"></button>
+        <button data-pos="ml"></button><button data-pos="mc"></button><button data-pos="mr"></button>
+        <button data-pos="bl"></button><button data-pos="bc"></button><button data-pos="br" class="on"></button>
+      </div>
+      <label class="check"><input type="checkbox" id="tile"> Repetir en mosaico</label>
+    </div>
+
+    <div class="group">
+      <div class="row">
+        <label class="lbl small" for="size_base">Medir sobre</label>
+        <select id="size_base" class="compact">
+          <option value="area" selected>Área — constante</option>
+          <option value="min">Lado menor</option>
+          <option value="width">Ancho</option>
+          <option value="height">Alto</option>
+          <option value="diag">Diagonal</option>
+          <option value="px">Píxeles fijos</option>
+        </select>
+      </div>
+      <div class="slider" data-suffix="%" id="wrapSizePct">
+        <label for="size_pct">Tamaño <output>6.0</output></label>
+        <input type="range" id="size_pct" min="0.5" max="40" step="0.1" value="6">
+      </div>
+      <div class="row" id="wrapSizePx" hidden>
+        <label class="lbl small" for="size_px">Alto en px</label>
+        <input type="number" id="size_px" class="compact" min="1" max="5000" value="48">
+      </div>
+      <div id="wrapMargin">
+        <div class="slider" data-suffix="%">
+          <label for="margin_x_pct">Margen X <output>3.0</output></label>
+          <input type="range" id="margin_x_pct" min="0" max="25" step="0.1" value="3">
+        </div>
+        <div class="slider" data-suffix="%">
+          <label for="margin_y_pct">Margen Y <output>3.0</output></label>
+          <input type="range" id="margin_y_pct" min="0" max="25" step="0.1" value="3">
+        </div>
+        <label class="check"><input type="checkbox" id="margin_link" checked> Enlazar X e Y</label>
+      </div>
+      <div id="wrapMarginPx" hidden>
+        <div class="row">
+          <label class="lbl small" for="margin_x_px">Margen X px</label>
+          <input type="number" id="margin_x_px" class="compact" min="0" max="20000" value="40">
+        </div>
+        <div class="row">
+          <label class="lbl small" for="margin_y_px">Margen Y px</label>
+          <input type="number" id="margin_y_px" class="compact" min="0" max="20000" value="40">
+        </div>
+      </div>
+      <div class="slider" data-suffix="%" id="wrapGap" hidden>
+        <label for="tile_gap">Separación del mosaico <output>40</output></label>
+        <input type="range" id="tile_gap" min="0" max="300" step="5" value="40">
+      </div>
+      <div class="slider" data-suffix="°">
+        <label for="angle">Rotación <output>0</output></label>
+        <input type="range" id="angle" min="-90" max="90" step="1" value="0">
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="row">
+        <label class="lbl small" for="color">Color</label>
+        <input type="color" id="color" value="#ffffff">
+      </div>
+      <div class="slider" data-suffix="%">
+        <label for="opacity">Opacidad <output>55</output></label>
+        <input type="range" id="opacity" min="0" max="100" step="1" value="55">
+      </div>
+      <div class="slider" data-suffix="%">
+        <label for="line_spacing">Interlineado <output>20</output></label>
+        <input type="range" id="line_spacing" min="-30" max="120" step="1" value="20">
+      </div>
+    </div>
+
+    <details class="group fold" id="foldOutline">
+      <summary>
+        <label class="check" onclick="event.stopPropagation()">
+          <input type="checkbox" id="outline_on"> Contorno
+        </label>
+      </summary>
+      <div class="slider" data-suffix="%">
+        <label for="outline_width">Grosor <output>6</output></label>
+        <input type="range" id="outline_width" min="0" max="30" step="0.5" value="6">
+      </div>
+      <div class="row">
+        <label class="lbl small" for="outline_color">Color</label>
+        <input type="color" id="outline_color" value="#000000">
+      </div>
+      <div class="slider" data-suffix="%">
+        <label for="outline_opacity">Opacidad <output>100</output></label>
+        <input type="range" id="outline_opacity" min="0" max="100" step="1" value="100">
+      </div>
+    </details>
+
+    <details class="group fold" id="foldShadow">
+      <summary>
+        <label class="check" onclick="event.stopPropagation()">
+          <input type="checkbox" id="shadow_on"> Sombra
+        </label>
+      </summary>
+      <div class="slider" data-suffix="%">
+        <label for="shadow_dx">Desplazamiento X <output>4</output></label>
+        <input type="range" id="shadow_dx" min="-30" max="30" step="0.5" value="4">
+      </div>
+      <div class="slider" data-suffix="%">
+        <label for="shadow_dy">Desplazamiento Y <output>4</output></label>
+        <input type="range" id="shadow_dy" min="-30" max="30" step="0.5" value="4">
+      </div>
+      <div class="slider" data-suffix="%">
+        <label for="shadow_blur">Difuminado <output>4</output></label>
+        <input type="range" id="shadow_blur" min="0" max="30" step="0.5" value="4">
+      </div>
+      <div class="row">
+        <label class="lbl small" for="shadow_color">Color</label>
+        <input type="color" id="shadow_color" value="#000000">
+      </div>
+      <div class="slider" data-suffix="%">
+        <label for="shadow_opacity">Opacidad <output>60</output></label>
+        <input type="range" id="shadow_opacity" min="0" max="100" step="1" value="60">
+      </div>
+    </details>
+
+    <details class="group fold" id="grpVideo" hidden>
+      <summary><span class="sum-title">Vídeo</span></summary>
+      <div class="row">
+        <label class="lbl small" for="vmode">Calidad</label>
+        <select id="vmode" class="compact">
+          <option value="same" selected>Igual que el original</option>
+          <option value="crf">Fija (CRF)</option>
+        </select>
+      </div>
+      <p class="note" id="noteSame">Se conserva el códec, el bitrate, el formato
+        de color, los fps y el contenedor del vídeo de origen. Solo cambian los
+        píxeles donde va la marca.</p>
+      <div id="wrapCrf" hidden>
+        <div class="slider" data-suffix="">
+          <label for="crf">CRF <output>18</output></label>
+          <input type="range" id="crf" min="0" max="32" step="1" value="18">
+        </div>
+        <p class="note">Menor es mejor. 0 no pierde nada pero pesa muchísimo;
+          18 es visualmente idéntico al original; 23 es el valor habitual.</p>
+        <div class="row">
+          <label class="lbl small" for="vpreset">Velocidad</label>
+          <select id="vpreset" class="compact">
+            <option value="veryfast">Muy rápida</option>
+            <option value="faster">Rápida</option>
+            <option value="medium" selected>Media</option>
+            <option value="slow">Lenta — menor tamaño</option>
+          </select>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="audio_copy" checked> Copiar el audio sin recodificar</label>
+    </details>
+
+    <details class="group fold">
+      <summary><span class="sum-title">Exportación</span></summary>
+      <div class="row">
+        <label class="lbl small" for="format">Formato</label>
+        <select id="format" class="compact">
+          <option value="keep" selected>Conservar original</option>
+          <option value="jpeg">JPEG</option>
+          <option value="png">PNG</option>
+          <option value="webp">WebP</option>
+          <option value="webp_lossless">WebP sin pérdida</option>
+        </select>
+      </div>
+      <div class="slider" data-suffix="">
+        <label for="quality">Calidad JPEG / WebP <output>95</output></label>
+        <input type="range" id="quality" min="40" max="100" step="1" value="95">
+      </div>
+      <div class="row">
+        <label class="lbl small" for="suffix">Sufijo</label>
+        <input type="text" id="suffix" class="compact" placeholder="_wm">
+      </div>
+      <label class="check"><input type="checkbox" id="keep_exif" checked> Conservar EXIF y perfil de color</label>
+    </details>
+
+  </section>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

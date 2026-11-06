@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Datos locales: los presets guardan rutas del equipo
+presets.json
+
+# Añadidos locales que describe el README
+bin/
+fonts/
