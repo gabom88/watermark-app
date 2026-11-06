@@ -21,6 +21,8 @@
 }
 
 *{box-sizing:border-box}
+/* las reglas display de cada componente no deben anular el atributo hidden */
+[hidden]{display:none!important}
 html,body{height:100%}
 body{
   margin:0; background:var(--bg); color:var(--ink);
@@ -96,12 +98,12 @@ button,input,select,textarea{font:inherit; color:inherit}
 .link:hover{color:var(--ink)}
 .link.danger:hover{color:var(--danger)}
 
-input[type=text],textarea,select{
+input[type=text],input[type=number],textarea,select{
   width:100%; background:var(--field); border:1px solid var(--line);
   border-radius:7px; padding:7px 9px; outline:none; resize:vertical;
 }
 select{cursor:pointer}
-input[type=text]:focus,textarea:focus,select:focus{border-color:var(--amber)}
+input[type=text]:focus,input[type=number]:focus,textarea:focus,select:focus{border-color:var(--amber)}
 input[type=color]{
   width:38px; height:28px; padding:0; border:1px solid var(--line);
   border-radius:6px; background:none; cursor:pointer; flex:none;
@@ -156,7 +158,12 @@ input[type=color]{
 }
 /* modo ajustar: la imagen nunca sale del marco */
 .stage.fit{overflow:hidden}
-.stage.fit .canvas{width:100%; height:100%; min-height:0}
+.stage.fit .canvas{
+  position:absolute; inset:16px; margin:0;
+  /* filas y columnas de tamaño definido: sin ellas, el max-height:100% de la
+     imagen no tiene referencia y las verticales se salen del marco */
+  grid-template:minmax(0,1fr)/minmax(0,1fr);
+}
 .stage.fit #preview{max-width:100%; max-height:100%; width:auto; height:auto}
 .stage-empty{color:var(--ink-faint); font-size:13px}
 .stage-foot{

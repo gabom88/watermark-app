@@ -23,10 +23,9 @@ archivos sueltos.
 |---|---|
 | ![Marca repetida en mosaico y girada sobre una imagen nocturna](docs/screenshots/mosaico-oscuro.png) | ![Fotograma de un vídeo con la marca aplicada y las opciones de vídeo abiertas](docs/screenshots/video.png) |
 
-Lote de seis archivos procesado, con contorno y sombra activos y el ZIP listo
-para descargar:
-
-![Lote procesado con la barra de progreso en 6 de 6 y el botón Descargar ZIP](docs/screenshots/lote-procesado.png)
+| Imagen vertical ajustada al marco | Lote procesado, con el ZIP listo para descargar |
+|---|---|
+| ![Imagen vertical completa en la vista previa, con contorno y sombra en la marca](docs/screenshots/vertical.png) | ![Lote de seis archivos procesado, con el botón Descargar ZIP en la barra superior](docs/screenshots/lote-procesado.png) |
 
 *Las imágenes de las capturas son paisajes generados por ordenador.*
 
